@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>とりこみ姫は見た v2.0.0 設計書</title>
+  <style>
+    :root {
+      --primary: #7B1FA2;
+      --secondary: #E91E63;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #F44336;
+      --info: #2196F3;
+      --dark: #212121;
+      --light: #FAFAFA;
+      --ok: #4CAF50;
+      --ng: #F44336;
+      --review: #FF9800;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.8;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      padding: 50px 20px;
+    }
+
+    header h1 {
+      font-size: 3em;
+      margin-bottom: 15px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    header .subtitle {
+      font-size: 1.4em;
+      opacity: 0.95;
+      margin-bottom: 10px;
+    }
+
+    header .version {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 1em;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 30px;
+      color: white;
+      font-size: 1.3em;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-header.concept { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .card-header.architecture { background: linear-gradient(135deg, #11998e, #38ef7d); }
+    .card-header.workflow { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .card-header.ui { background: linear-gradient(135deg, #fa709a, #fee140); }
+    .card-header.logic { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #333; }
+    .card-header.safety { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .card-header.priority { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .card-header.tech { background: linear-gradient(135deg, #434343, #000000); }
+
+    .card-body {
+      padding: 30px;
+    }
+
+    /* コンセプト図 */
+    .concept-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding: 30px;
+      background: linear-gradient(to right, #f8f9fa, #e9ecef);
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+
+    .concept-item {
+      text-align: center;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      min-width: 150px;
+    }
+
+    .concept-item .icon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+
+    .concept-item h4 {
+      color: var(--dark);
+      margin-bottom: 5px;
+    }
+
+    .concept-item p {
+      font-size: 0.85em;
+      color: #666;
+    }
+
+    .concept-arrow {
+      font-size: 2em;
+      color: var(--primary);
+    }
+
+    /* ワークフロー */
+    .workflow-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .workflow-step {
+      display: flex;
+      align-items: stretch;
+      gap: 20px;
+    }
+
+    .step-line {
+      width: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .step-number {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .step-connector {
+      width: 4px;
+      flex: 1;
+      background: linear-gradient(to bottom, var(--primary), var(--secondary));
+      min-height: 30px;
+    }
+
+    .step-content {
+      flex: 1;
+      background: var(--light);
+      padding: 25px;
+      border-radius: 12px;
+      border-left: 5px solid var(--primary);
+      margin-bottom: 20px;
+    }
+
+    .step-content h4 {
+      color: var(--dark);
+      margin-bottom: 12px;
+      font-size: 1.2em;
+    }
+
+    .step-content.human { border-left-color: var(--success); }
+    .step-content.auto { border-left-color: var(--info); }
+    .step-content.decision { border-left-color: var(--warning); }
+
+    /* 判定UI */
+    .judgment-demo {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .judgment-card {
+      padding: 25px;
+      border-radius: 16px;
+      text-align: center;
+      color: white;
+    }
+
+    .judgment-card.ok { background: linear-gradient(135deg, #4CAF50, #8BC34A); }
+    .judgment-card.ng { background: linear-gradient(135deg, #F44336, #E91E63); }
+    .judgment-card.review { background: linear-gradient(135deg, #FF9800, #FFC107); color: #333; }
+
+    .judgment-card .status {
+      font-size: 3em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .judgment-card .reason {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      display: inline-block;
+      margin: 10px 0;
+    }
+
+    .judgment-card .actions {
+      margin-top: 15px;
+    }
+
+    .judgment-card .btn {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .judgment-card .btn-primary { background: white; color: var(--dark); }
+    .judgment-card .btn-secondary { background: rgba(255,255,255,0.3); color: white; }
+
+    /* 判定ロジック表 */
+    .logic-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .logic-table th, .logic-table td {
+      padding: 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    .logic-table th {
+      background: var(--light);
+      font-weight: bold;
+    }
+
+    .logic-table tr:hover {
+      background: #f9f9f9;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+
+    .badge.ok { background: #E8F5E9; color: #2E7D32; }
+    .badge.ng { background: #FFEBEE; color: #C62828; }
+    .badge.review { background: #FFF3E0; color: #E65100; }
+    .badge.phase1 { background: #E3F2FD; color: #1565C0; }
+    .badge.phase2 { background: #F3E5F5; color: #7B1FA2; }
+    .badge.phase3 { background: #E0F2F1; color: #00695C; }
+
+    /* 安全対策 */
+    .safety-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .safety-item {
+      background: linear-gradient(135deg, #FFF8E1, #FFECB3);
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid var(--warning);
+      text-align: center;
+    }
+
+    .safety-item .icon {
+      font-size: 2.5em;
+      margin-bottom: 15px;
+    }
+
+    .safety-item h4 {
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .safety-item p {
+      color: #666;
+      font-size: 0.95em;
+    }
+
+    /* フェーズ */
+    .phase-timeline {
+      position: relative;
+      padding-left: 40px;
+    }
+
+    .phase-timeline::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(to bottom, var(--info), var(--primary), var(--success));
+    }
+
+    .phase-item {
+      position: relative;
+      padding: 25px;
+      margin-bottom: 25px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .phase-item::before {
+      content: '';
+      position: absolute;
+      left: -33px;
+      top: 30px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 4px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .phase-item.phase1::before { background: var(--info); }
+    .phase-item.phase2::before { background: var(--primary); }
+    .phase-item.phase3::before { background: var(--success); }
+
+    .phase-item h4 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* データフロー図 */
+    .dataflow {
+      background: #1E1E1E;
+      padding: 25px;
+      border-radius: 12px;
+      color: #D4D4D4;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.9em;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+
+    .dataflow .comment { color: #6A9955; }
+    .dataflow .keyword { color: #569CD6; }
+    .dataflow .string { color: #CE9178; }
+    .dataflow .function { color: #DCDCAA; }
+
+    /* 比較表 */
+    .compare-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 768px) {
+      .compare-box {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .compare-item {
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    .compare-item.before {
+      background: #FFEBEE;
+      border: 2px solid var(--danger);
+    }
+
+    .compare-item.after {
+      background: #E8F5E9;
+      border: 2px solid var(--success);
+    }
+
+    .compare-item h5 {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* リスト */
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .feature-list li:last-child {
+      border-bottom: none;
+    }
+
+    .feature-list .icon {
+      flex-shrink: 0;
+      font-size: 1.2em;
+    }
+
+    /* サマリーボックス */
+    .summary-box {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 30px;
+      border-radius: 16px;
+      margin: 30px 0;
+    }
+
+    .summary-box h3 {
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .summary-item {
+      background: rgba(255,255,255,0.15);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .summary-item .value {
+      font-size: 2.5em;
+      font-weight: bold;
+    }
+
+    .summary-item .label {
+      opacity: 0.9;
+      font-size: 0.95em;
+    }
+
+    footer {
+      text-align: center;
+      color: white;
+      padding: 40px;
+      opacity: 0.9;
+    }
+
+    footer p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>👁️ とりこみ姫は見た</h1>
+      <p class="subtitle">統合版 設計書</p>
+      <span class="version">v2.0.0 | 2025年1月8日</span>
+    </header>
+
+    <!-- コンセプト -->
+    <div class="card">
+      <div class="card-header concept">💡 コンセプト</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 20px;">「みちゃった君」+「とりこみ君」= 統合版</h3>
+        <p style="margin-bottom: 20px;">2つの拡張機能を1つに統合し、半自動化でフリマ商品を効率的に判定・エクスポートする。</p>
+
+        <div class="compare-box">
+          <div class="compare-item before">
+            <h5>❌ 旧方式（連携）</h5>
+            <ul style="margin-left: 20px;">
+              <li>2つの拡張機能を別々に管理</li>
+              <li>chrome.storage で連携（複雑）</li>
+              <li>デバッグが困難</li>
+              <li>メッセージパッシングの問題</li>
+            </ul>
+          </div>
+          <div class="compare-item after">
+            <h5>✅ 新方式（統合）</h5>
+            <ul style="margin-left: 20px;">
+              <li>1つの拡張機能で完結</li>
+              <li>内部で状態管理（シンプル）</li>
+              <li>デバッグしやすい</li>
+              <li>アトミックな処理が可能</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="concept-box">
+          <div class="concept-item">
+            <div class="icon">🔍</div>
+            <h4>検索一覧</h4>
+            <p>商品を選択<br>一括チェック開始</p>
+          </div>
+          <div class="concept-arrow">→</div>
+          <div class="concept-item">
+            <div class="icon">📋</div>
+            <h4>商品詳細</h4>
+            <p>自動で判定<br>OK/NG/要確認</p>
+          </div>
+          <div class="concept-arrow">→</div>
+          <div class="concept-item">
+            <div class="icon">👆</div>
+            <h4>人間が判断</h4>
+            <p>ボタンを押す<br>（トリガー）</p>
+          </div>
+          <div class="concept-arrow">→</div>
+          <div class="concept-item">
+            <div class="icon">📊</div>
+            <h4>エクスポート</h4>
+            <p>CSV出力<br>Sheets連携</p>
+          </div>
+        </div>
+
+        <div class="summary-box">
+          <h3>🎯 半自動化の原則</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="value">👆</div>
+              <div class="label">人間がトリガー</div>
+            </div>
+            <div class="summary-item">
+              <div class="value">🤖</div>
+              <div class="label">自動で判定表示</div>
+            </div>
+            <div class="summary-item">
+              <div class="value">🛡️</div>
+              <div class="label">BAN対策組み込み</div>
+            </div>
+            <div class="summary-item">
+              <div class="value">⚡</div>
+              <div class="label">ワンクリック消化</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- アーキテクチャ -->
+    <div class="card">
+      <div class="card-header architecture">🏗️ アーキテクチャ</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 20px;">シングル拡張機能 + デュアルモード</h3>
+
+        <table class="logic-table">
+          <thead>
+            <tr>
+              <th>ファイル</th>
+              <th>役割</th>
+              <th>説明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>manifest.json</code></td>
+              <td>設定</td>
+              <td>権限・content_scripts・commands定義</td>
+            </tr>
+            <tr>
+              <td><code>content.js</code></td>
+              <td>メインロジック</td>
+              <td>URL判定でモード分岐（一覧/詳細）</td>
+            </tr>
+            <tr>
+              <td><code>background.js</code></td>
+              <td>バックグラウンド</td>
+              <td>タブ操作・ショートカット処理</td>
+            </tr>
+            <tr>
+              <td><code>popup.html/js</code></td>
+              <td>ポップアップ</td>
+              <td>設定・エクスポートUI</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin: 30px 0 15px;">データフロー</h4>
+        <div class="dataflow">
+          <span class="comment">// 1. 詳細ページで「OK」ボタンを押す</span><br>
+          <span class="keyword">const</span> productData = <span class="function">extractProductInfo</span>();<br>
+          <span class="keyword">const</span> saved = <span class="keyword">await</span> chrome.storage.local.<span class="function">get</span>(<span class="string">'exportQueue'</span>);<br>
+          saved.exportQueue.<span class="function">push</span>(productData);<br>
+          <span class="keyword">await</span> chrome.storage.local.<span class="function">set</span>({ exportQueue: saved.exportQueue });<br>
+          window.<span class="function">close</span>(); <span class="comment">// タブを閉じる</span><br><br>
+
+          <span class="comment">// 2. 一覧ページで「エクスポート」ボタンを押す</span><br>
+          <span class="keyword">const</span> { exportQueue } = <span class="keyword">await</span> chrome.storage.local.<span class="function">get</span>(<span class="string">'exportQueue'</span>);<br>
+          <span class="function">downloadAsCSV</span>(exportQueue);<br>
+          <span class="keyword">await</span> chrome.storage.local.<span class="function">set</span>({ exportQueue: [] }); <span class="comment">// クリア</span>
+        </div>
+
+        <h4 style="margin: 30px 0 15px;">モード分岐</h4>
+        <table class="logic-table">
+          <thead>
+            <tr>
+              <th>URL パターン</th>
+              <th>モード</th>
+              <th>機能</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>mercari.com/search/*</code></td>
+              <td><span class="badge phase1">一覧モード</span></td>
+              <td>チェックボックス追加、一括チェック開始ボタン</td>
+            </tr>
+            <tr>
+              <td><code>mercari.com/item/*</code></td>
+              <td><span class="badge phase2">詳細モード</span></td>
+              <td>判定表示、OK/NG/閉じるボタン</td>
+            </tr>
+            <tr>
+              <td><code>mercari.com/shops/product/*</code></td>
+              <td><span class="badge phase2">詳細モード（Shop）</span></td>
+              <td>ショップ用の判定ロジック</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ワークフロー -->
+    <div class="card">
+      <div class="card-header workflow">🔄 ワークフロー</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 30px;">半自動化フロー</h3>
+
+        <div class="workflow-container">
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">1</div>
+              <div class="step-connector"></div>
+            </div>
+            <div class="step-content human">
+              <h4>👆 検索一覧で商品を選択</h4>
+              <p>人間が検索結果から気になる商品にチェックを入れる。</p>
+              <p><span class="badge ok">人間の操作</span></p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">2</div>
+              <div class="step-connector"></div>
+            </div>
+            <div class="step-content human">
+              <h4>👆 「一括チェック開始」ボタンを押す</h4>
+              <p>選択した商品（最大10件）をバックグラウンドタブで開く。</p>
+              <p><strong>間隔：1〜3秒のランダム</strong>（BAN対策）</p>
+              <p><span class="badge ok">人間のトリガー</span></p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">3</div>
+              <div class="step-connector"></div>
+            </div>
+            <div class="step-content auto">
+              <h4>🤖 各タブで自動判定</h4>
+              <p>開かれたタブで自動的に情報を取得し、判定結果を表示。</p>
+              <ul style="margin: 10px 0 10px 20px;">
+                <li>評価件数・悪い評価率</li>
+                <li>発送までの日数</li>
+                <li>画像枚数</li>
+                <li>NGワードチェック</li>
+              </ul>
+              <p><span class="badge phase1">自動処理</span></p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">4</div>
+              <div class="step-connector"></div>
+            </div>
+            <div class="step-content decision">
+              <h4>📊 判定結果を大きく表示</h4>
+              <div class="judgment-demo">
+                <div class="judgment-card ok">
+                  <div class="status">✅ OK</div>
+                  <div class="reason">条件クリア</div>
+                  <div class="actions">
+                    <button class="btn btn-primary">保存して閉じる</button>
+                  </div>
+                </div>
+                <div class="judgment-card ng">
+                  <div class="status">❌ NG</div>
+                  <div class="reason">評価50件 / 画像2枚</div>
+                  <div class="actions">
+                    <button class="btn btn-primary">閉じる</button>
+                  </div>
+                </div>
+                <div class="judgment-card review">
+                  <div class="status">⚠️ 要確認</div>
+                  <div class="reason">発送4-7日</div>
+                  <div class="actions">
+                    <button class="btn btn-primary">保存</button>
+                    <button class="btn btn-secondary">閉じる</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">5</div>
+              <div class="step-connector"></div>
+            </div>
+            <div class="step-content human">
+              <h4>👆 人間がボタンを押す（ワンクリック消化）</h4>
+              <p>各タブで判定結果を確認し、ボタンを押す。</p>
+              <ul style="margin: 10px 0 10px 20px;">
+                <li><strong>OK/保存</strong> → データを保存してタブを閉じる</li>
+                <li><strong>NG/閉じる</strong> → 保存せずタブを閉じる</li>
+              </ul>
+              <p><span class="badge ok">人間の最終判断</span></p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-line">
+              <div class="step-number">6</div>
+            </div>
+            <div class="step-content human">
+              <h4>📊 一覧ページでエクスポート</h4>
+              <p>貯まったデータをCSV出力、またはSheetsに送信。</p>
+              <p><span class="badge ok">人間のトリガー</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 判定ロジック -->
+    <div class="card">
+      <div class="card-header logic">⚖️ 判定ロジック</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 20px;">OK / NG / 要確認 の判定基準</h3>
+
+        <table class="logic-table">
+          <thead>
+            <tr>
+              <th>判定</th>
+              <th>条件</th>
+              <th>アクション</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge ng">NG</span></td>
+              <td>
+                <ul style="margin-left: 20px;">
+                  <li>評価件数 100件以下</li>
+                  <li>悪い評価率 5%以上</li>
+                  <li>NGワードを含む（ジャンク、欠品など）</li>
+                  <li>画像枚数 2枚以下</li>
+                </ul>
+              </td>
+              <td>❌ 閉じる を推奨</td>
+            </tr>
+            <tr>
+              <td><span class="badge ok">OK</span></td>
+              <td>
+                <ul style="margin-left: 20px;">
+                  <li>NG条件に該当しない</li>
+                  <li>発送 1〜2日</li>
+                  <li>画像 5枚以上</li>
+                </ul>
+              </td>
+              <td>✅ 保存 を推奨</td>
+            </tr>
+            <tr>
+              <td><span class="badge review">要確認</span></td>
+              <td>
+                <ul style="margin-left: 20px;">
+                  <li>発送 4〜7日</li>
+                  <li>評価件数 100〜200件</li>
+                  <li>DOM取得エラー（判定不能）</li>
+                </ul>
+              </td>
+              <td>⚠️ 人間が判断</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin: 30px 0 15px;">理由ラベル（なぜNG/要確認なのか）</h4>
+        <p style="margin-bottom: 15px;">判定結果だけでなく、その理由を明示することで人間の確認負担を軽減。</p>
+
+        <ul class="feature-list">
+          <li><span class="icon">📊</span><div><strong>評価50件</strong> - 評価件数が設定値(100)以下</div></li>
+          <li><span class="icon">👎</span><div><strong>悪い評価8%</strong> - 悪い評価率が設定値(5%)以上</div></li>
+          <li><span class="icon">📷</span><div><strong>画像2枚のみ</strong> - 画像枚数が設定値(3)未満</div></li>
+          <li><span class="icon">📦</span><div><strong>発送4-7日</strong> - 発送日数が遅め</div></li>
+          <li><span class="icon">⚠️</span><div><strong>NGワード: ジャンク</strong> - 商品説明にNGワードを検出</div></li>
+          <li><span class="icon">❓</span><div><strong>取得エラー</strong> - DOMから情報を取得できず（UI変更の可能性）</div></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- UI設計 -->
+    <div class="card">
+      <div class="card-header ui">🎨 UI設計</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 20px;">検索一覧ページ</h3>
+        <ul class="feature-list">
+          <li><span class="icon">☑️</span><div><strong>チェックボックス</strong> - 各商品カードの左上に追加</div></li>
+          <li><span class="icon">📊</span><div><strong>固定フッターバー</strong> - 画面下部に「一括チェック開始」「エクスポート」ボタン</div></li>
+          <li><span class="icon">🔢</span><div><strong>選択数カウント</strong> - 「3件選択中 / 最大10件」</div></li>
+        </ul>
+
+        <h3 style="margin: 30px 0 20px;">商品詳細ページ</h3>
+        <ul class="feature-list">
+          <li><span class="icon">📋</span><div><strong>判定パネル</strong> - 画面右上に固定表示（オーバーレイ）</div></li>
+          <li><span class="icon">🎯</span><div><strong>大きな判定表示</strong> - OK/NG/要確認 を一目でわかるサイズで</div></li>
+          <li><span class="icon">📝</span><div><strong>理由ラベル</strong> - なぜその判定になったかを表示</div></li>
+          <li><span class="icon">🔘</span><div><strong>アクションボタン</strong> - 「保存して閉じる」「閉じる」</div></li>
+        </ul>
+
+        <h4 style="margin: 30px 0 15px;">判定パネルのイメージ</h4>
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 12px; max-width: 350px;">
+          <div style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #F44336, #E91E63); color: white; padding: 20px; text-align: center;">
+              <div style="font-size: 2.5em; font-weight: bold;">❌ NG</div>
+            </div>
+            <div style="padding: 20px;">
+              <div style="background: #FFEBEE; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 0.9em;">
+                <span style="color: #C62828;">📊 評価50件</span>
+              </div>
+              <div style="background: #FFEBEE; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9em;">
+                <span style="color: #C62828;">📷 画像2枚のみ</span>
+              </div>
+              <button style="width: 100%; padding: 12px; background: #F44336; color: white; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer;">
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- アカウント保護 -->
+    <div class="card">
+      <div class="card-header safety">🛡️ アカウント保護（BAN対策）</div>
+      <div class="card-body">
+        <p style="margin-bottom: 20px;">メルカリなどのアカウント停止を避けるための安全策。</p>
+
+        <div class="safety-grid">
+          <div class="safety-item">
+            <div class="icon">👆</div>
+            <h4>人間トリガー必須</h4>
+            <p>ボタンを押さないと何も実行されない。完全自動巡回はしない。</p>
+          </div>
+          <div class="safety-item">
+            <div class="icon">🔢</div>
+            <h4>最大10件まで</h4>
+            <p>一度に開くタブは10件に制限。大量アクセスを防止。</p>
+          </div>
+          <div class="safety-item">
+            <div class="icon">🎲</div>
+            <h4>ランダム間隔</h4>
+            <p>タブを開く間隔は1〜3秒のランダム。機械的なパターンを避ける。</p>
+          </div>
+          <div class="safety-item">
+            <div class="icon">📄</div>
+            <h4>DOM解析のみ</h4>
+            <p>APIを直接叩かない。表示されたHTMLをパースするだけ。</p>
+          </div>
+          <div class="safety-item">
+            <div class="icon">🧑</div>
+            <h4>曖昧な判断は人間に</h4>
+            <p>「要確認」はタブを閉じず、人間が最終判断。</p>
+          </div>
+          <div class="safety-item">
+            <div class="icon">⏱️</div>
+            <h4>自然な滞在時間</h4>
+            <p>判定を見て判断する時間が、自然な滞在時間になる。</p>
+          </div>
+        </div>
+
+        <div class="dataflow" style="margin-top: 30px;">
+          <span class="comment">// ランダム間隔の実装例</span><br>
+          <span class="keyword">function</span> <span class="function">getRandomInterval</span>() {<br>
+          &nbsp;&nbsp;<span class="keyword">const</span> min = <span class="string">1000</span>; <span class="comment">// 1秒</span><br>
+          &nbsp;&nbsp;<span class="keyword">const</span> max = <span class="string">3000</span>; <span class="comment">// 3秒</span><br>
+          &nbsp;&nbsp;<span class="keyword">return</span> min + Math.<span class="function">random</span>() * (max - min);<br>
+          }<br><br>
+
+          <span class="comment">// タブを順次開く</span><br>
+          <span class="keyword">for</span> (<span class="keyword">const</span> url <span class="keyword">of</span> selectedUrls) {<br>
+          &nbsp;&nbsp;<span class="keyword">await</span> chrome.tabs.<span class="function">create</span>({ url, active: <span class="keyword">false</span> });<br>
+          &nbsp;&nbsp;<span class="keyword">await</span> <span class="function">sleep</span>(<span class="function">getRandomInterval</span>());<br>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- 実装フェーズ -->
+    <div class="card">
+      <div class="card-header priority">📋 実装フェーズ</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 30px;">段階的な開発計画</h3>
+
+        <div class="phase-timeline">
+          <div class="phase-item phase1">
+            <h4><span class="badge phase1">Phase 1</span> 詳細ページ機能（コアロジック）</h4>
+            <p style="margin-bottom: 10px;"><strong>最優先。</strong>単体の商品ページで動く判定ロジック、UIパネル、保存機能。</p>
+            <ul style="margin-left: 20px; color: #666;">
+              <li>評価取得の改善（data-testid="seller-link"）</li>
+              <li>判定ロジックの実装</li>
+              <li>判定パネルUIの作成</li>
+              <li>「保存して閉じる」「閉じる」ボタン</li>
+              <li>chrome.storage.local への保存</li>
+            </ul>
+            <p style="margin-top: 10px; color: #1565C0;"><strong>→ これだけで手動で開いたタブでも使える（即戦力）</strong></p>
+          </div>
+
+          <div class="phase-item phase2">
+            <h4><span class="badge phase2">Phase 2</span> 一覧ページ連携（自動化）</h4>
+            <p style="margin-bottom: 10px;">検索一覧ページでの選択・一括オープン機能。</p>
+            <ul style="margin-left: 20px; color: #666;">
+              <li>チェックボックスの注入</li>
+              <li>固定フッターバーの作成</li>
+              <li>ランダム間隔でのタブ展開</li>
+              <li>選択数のカウント表示</li>
+            </ul>
+          </div>
+
+          <div class="phase-item phase3">
+            <h4><span class="badge phase3">Phase 3</span> データ管理とエクスポート</h4>
+            <p style="margin-bottom: 10px;">データの集約とエクスポート機能。</p>
+            <ul style="margin-left: 20px; color: #666;">
+              <li>エクスポートキューの管理</li>
+              <li>CSV出力機能</li>
+              <li>Sheets連携（Webhook）</li>
+              <li>エクスポート履歴の表示</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 技術仕様 -->
+    <div class="card">
+      <div class="card-header tech">🔧 技術仕様</div>
+      <div class="card-body">
+        <h3 style="margin-bottom: 20px;">DOM取得セレクタ（メルカリ）</h3>
+
+        <table class="logic-table">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>セレクタ / 方法</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>評価（通常）</td>
+              <td><code>[data-testid="seller-link"]</code> → innerTextから数値抽出</td>
+            </tr>
+            <tr>
+              <td>評価（Shop）</td>
+              <td><code>[data-testid="shops-information"]</code></td>
+            </tr>
+            <tr>
+              <td>商品名</td>
+              <td><code>[data-testid="name"]</code> または <code>h1</code></td>
+            </tr>
+            <tr>
+              <td>価格</td>
+              <td><code>[data-testid="price"]</code></td>
+            </tr>
+            <tr>
+              <td>発送日数</td>
+              <td><code>[data-testid="shipping-duration"]</code> またはテキスト検索</td>
+            </tr>
+            <tr>
+              <td>画像</td>
+              <td><code>[data-testid="image-0"]</code> 〜 <code>[data-testid="image-N"]</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin: 30px 0 15px;">エラーハンドリング</h4>
+        <p>DOMが見つからない場合は「判定不能（要確認）」として処理。NG扱いにしない。</p>
+
+        <div class="dataflow">
+          <span class="keyword">function</span> <span class="function">getSellerRating</span>() {<br>
+          &nbsp;&nbsp;<span class="keyword">const</span> sellerLink = document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>);<br>
+          &nbsp;&nbsp;<span class="keyword">if</span> (!sellerLink) {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> { status: <span class="string">'unknown'</span>, reason: <span class="string">'取得エラー'</span> };<br>
+          &nbsp;&nbsp;}<br>
+          &nbsp;&nbsp;<span class="comment">// 評価取得処理...</span><br>
+          }
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>このドキュメントはClaude、GPT-5、Geminiの3者協議に基づいて作成されました。</p>
+      <p>© 2025 とりこみ姫は見た プロジェクト</p>
+      <p style="margin-top: 10px; font-size: 0.9em;">GitHub: <a href="https://github.com/naokijodan/torikomi-hime-wa-mita" style="color: white;">naokijodan/torikomi-hime-wa-mita</a></p>
+    </footer>
+  </div>
+</body>
+</html>
