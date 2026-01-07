@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>評価取得 問題分析レポート</title>
+  <style>
+    :root {
+      --primary: #3498DB;
+      --success: #27AE60;
+      --warning: #F39C12;
+      --danger: #E74C3C;
+      --dark: #2C3E50;
+      --light: #ECF0F1;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+      line-height: 1.8;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #E74C3C, #C0392B);
+      color: white;
+      padding: 40px;
+      border-radius: 16px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .section {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      padding: 20px 30px;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: white;
+    }
+
+    .section-header.analysis { background: var(--danger); }
+    .section-header.compare { background: var(--primary); }
+    .section-header.solution { background: var(--success); }
+    .section-header.debug { background: #9B59B6; }
+
+    .section-body {
+      padding: 30px;
+    }
+
+    /* 問題パターンカード */
+    .problem-pattern {
+      border: 2px solid #eee;
+      border-radius: 12px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+
+    .problem-pattern-header {
+      background: #FFF5F5;
+      padding: 15px 20px;
+      border-bottom: 2px solid #FFCDD2;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .problem-pattern-header .icon {
+      font-size: 2em;
+    }
+
+    .problem-pattern-header h3 {
+      color: var(--danger);
+    }
+
+    .problem-pattern-body {
+      padding: 20px;
+    }
+
+    .problem-pattern-body h4 {
+      color: var(--dark);
+      margin: 15px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* コード表示 */
+    .code-example {
+      background: #1E1E1E;
+      color: #D4D4D4;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.9em;
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+
+    .code-example .comment { color: #6A9955; }
+    .code-example .string { color: #CE9178; }
+    .code-example .keyword { color: #569CD6; }
+    .code-example .number { color: #B5CEA8; }
+    .code-example .function { color: #DCDCAA; }
+    .code-example .highlight { background: #3A3D41; display: block; padding: 2px 0; }
+
+    /* DOM構造図 */
+    .dom-structure {
+      background: #F8F9FA;
+      border: 1px solid #DEE2E6;
+      border-radius: 8px;
+      padding: 20px;
+      font-family: 'Monaco', monospace;
+      font-size: 0.9em;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .dom-structure .tag { color: #E74C3C; }
+    .dom-structure .attr { color: #27AE60; }
+    .dom-structure .value { color: #3498DB; }
+    .dom-structure .content { color: #666; }
+    .dom-structure .highlight { background: #FFFDE7; }
+
+    /* 比較テーブル */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .compare-table th, .compare-table td {
+      padding: 15px;
+      text-align: left;
+      border: 1px solid #eee;
+    }
+
+    .compare-table th {
+      background: var(--light);
+    }
+
+    .compare-table .good { background: #E8F5E9; color: #2E7D32; }
+    .compare-table .bad { background: #FFEBEE; color: #C62828; }
+
+    /* フローチャート */
+    .flowchart {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+      background: #F8F9FA;
+      border-radius: 12px;
+    }
+
+    .flow-step {
+      background: white;
+      padding: 15px 30px;
+      border-radius: 8px;
+      border: 2px solid var(--primary);
+      text-align: center;
+      min-width: 300px;
+    }
+
+    .flow-step.success { border-color: var(--success); }
+    .flow-step.fail { border-color: var(--danger); }
+    .flow-step.fallback { border-color: var(--warning); background: #FFF8E1; }
+
+    .flow-arrow {
+      font-size: 1.5em;
+      color: #666;
+    }
+
+    .flow-branch {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    .flow-branch-label {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    /* バッジ */
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+
+    .badge.critical { background: #FFEBEE; color: #C62828; }
+    .badge.high { background: #FFF3E0; color: #E65100; }
+    .badge.medium { background: #FFF8E1; color: #F57F17; }
+    .badge.fixed { background: #E8F5E9; color: #2E7D32; }
+
+    /* アラートボックス */
+    .alert {
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    .alert.info {
+      background: #E3F2FD;
+      border-left: 4px solid var(--primary);
+    }
+
+    .alert.warning {
+      background: #FFF8E1;
+      border-left: 4px solid var(--warning);
+    }
+
+    .alert.success {
+      background: #E8F5E9;
+      border-left: 4px solid var(--success);
+    }
+
+    /* チェックリスト */
+    .checklist {
+      list-style: none;
+    }
+
+    .checklist li {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .checklist li::before {
+      content: "☐ ";
+      color: var(--primary);
+      font-size: 1.2em;
+    }
+
+    .checklist li.done::before {
+      content: "☑ ";
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>評価取得 問題分析レポート</h1>
+      <p>みちゃった君 × とりこみ君 評価取得ロジックの詳細分析</p>
+      <p style="font-size: 0.9em; margin-top: 10px;">作成日: 2025年1月7日</p>
+    </header>
+
+    <!-- 問題の概要 -->
+    <div class="section">
+      <div class="section-header analysis">📊 問題の概要</div>
+      <div class="section-body">
+        <p>評価取得において以下の3パターンの問題が発生しています：</p>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">
+          <div style="background: #FFEBEE; padding: 20px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 2.5em;">0️⃣</div>
+            <h4 style="color: #C62828; margin: 10px 0;">評価が0になる</h4>
+            <p style="font-size: 0.9em;">DOM要素が見つからない場合</p>
+          </div>
+          <div style="background: #FFF3E0; padding: 20px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 2.5em;">❌</div>
+            <h4 style="color: #E65100; margin: 10px 0;">数値が間違っている</h4>
+            <p style="font-size: 0.9em;">近くの別の数値を誤取得</p>
+          </div>
+          <div style="background: #FFF8E1; padding: 20px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 2.5em;">⚠️</div>
+            <h4 style="color: #F57F17; margin: 10px 0;">取得できないケース</h4>
+            <p style="font-size: 0.9em;">DOM構造の変化や遅延</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 問題パターン1 -->
+    <div class="section">
+      <div class="section-header analysis">🔍 問題パターン1: 評価件数が0になる</div>
+      <div class="section-body">
+
+        <div class="problem-pattern">
+          <div class="problem-pattern-header">
+            <div class="icon">🎯</div>
+            <div>
+              <h3>原因: DOM要素が存在しない / 見つからない</h3>
+              <span class="badge critical">発生頻度: 高</span>
+            </div>
+          </div>
+          <div class="problem-pattern-body">
+
+            <h4>とりこみ君の現在のロジック</h4>
+            <div class="code-example">
+<span class="comment">// 方法1: フリマアシスト依存（インストールされていない場合は失敗）</span>
+<span class="keyword">const</span> assistRatings = document.<span class="function">querySelector</span>(<span class="string">"#furima-assist-seller-ratings"</span>);
+<span class="keyword">if</span> (assistRatings) { ... } <span class="comment">// フリマアシスト未インストールだとスキップ</span>
+
+<span class="comment">// 方法2: span要素検索（セレクタが不正確）</span>
+<span class="keyword">const</span> allSpans = document.<span class="function">querySelectorAll</span>(<span class="string">'[class*="Rating"] span'</span>);
+<span class="comment">// ↑ クラス名にRatingを含むspan要素を探すが、メルカリでは該当しないことがある</span>
+
+<span class="comment">// 方法3: テキスト検索（パターンに一致しない場合失敗）</span>
+<span class="keyword">const</span> goodMatch = bodyText.<span class="function">match</span>(/良い[^\d]*([0-9,]+)/);
+<span class="comment">// ↑ 「良い」と数字の間に予期しない文字があると失敗</span>
+            </div>
+
+            <h4>みちゃった君の改善済みロジック</h4>
+            <div class="code-example">
+<span class="highlight"><span class="comment">// 方法1（最優先）: data-testid="seller-link" から取得</span></span>
+<span class="keyword">const</span> sellerLink = document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>);
+<span class="keyword">if</span> (sellerLink) {
+  <span class="keyword">const</span> sellerText = sellerLink.innerText;
+  <span class="keyword">const</span> allNumbers = sellerText.<span class="function">match</span>(/\d+/g);
+  <span class="comment">// allNumbers = ["873", "871", "2"] → 合計=873, 良い=871, 悪い=2</span>
+}
+            </div>
+
+            <div class="alert info">
+              <strong>ポイント:</strong> data-testid属性はメルカリが内部テスト用に使用しているため、クラス名より安定しています。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 問題パターン2 -->
+    <div class="section">
+      <div class="section-header analysis">🔍 問題パターン2: 数値が間違っている</div>
+      <div class="section-body">
+
+        <div class="problem-pattern">
+          <div class="problem-pattern-header">
+            <div class="icon">🔢</div>
+            <div>
+              <h3>原因: 評価件数の近くに別の数値がある</h3>
+              <span class="badge high">発生頻度: 中</span>
+            </div>
+          </div>
+          <div class="problem-pattern-body">
+
+            <h4>問題が発生するDOM構造の例</h4>
+            <div class="dom-structure">
+<span class="tag">&lt;a</span> <span class="attr">data-testid</span>=<span class="value">"seller-link"</span><span class="tag">&gt;</span>
+  <span class="content">CLOVER‎ フォロー割引・まとめ割引</span>
+  <span class="content highlight">  <strong>1500</strong>        ← フォロワー数（誤取得の原因）</span>
+  <span class="content">  <strong>873</strong>         ← 評価合計（正しい値）</span>
+  <span class="content">   871  2       ← 良い評価、悪い評価</span>
+  <span class="content">  本人確認済</span>
+<span class="tag">&lt;/a&gt;</span>
+            </div>
+
+            <h4>現在のとりこみ君のロジック（問題あり）</h4>
+            <div class="code-example">
+<span class="keyword">const</span> nums = [...spans]
+  .<span class="function">map</span>(x => <span class="function">parseInt</span>((x.textContent || <span class="string">''</span>).<span class="function">replace</span>(/[^\d]/g, <span class="string">''</span>)))
+  .<span class="function">filter</span>(n => !Number.<span class="function">isNaN</span>(n) && n > <span class="number">0</span> && n < <span class="number">100000</span>);
+
+<span class="keyword">if</span> (nums.length >= <span class="number">2</span>) {
+  good = nums[<span class="number">0</span>];  <span class="comment">// ← 最初の数値を「良い」と仮定（危険！）</span>
+  bad = nums[<span class="number">1</span>];   <span class="comment">// ← 2番目を「悪い」と仮定（危険！）</span>
+}
+            </div>
+
+            <h4>改善案: 数値の検証ロジック</h4>
+            <div class="code-example">
+<span class="comment">// 合計 = 良い + 悪い (+ 普通) を検証</span>
+<span class="keyword">if</span> (allNumbers.length >= <span class="number">3</span>) {
+  <span class="keyword">const</span> total = <span class="function">parseInt</span>(allNumbers[<span class="number">0</span>]);
+  <span class="keyword">const</span> good = <span class="function">parseInt</span>(allNumbers[<span class="number">1</span>]);
+  <span class="keyword">const</span> bad = <span class="function">parseInt</span>(allNumbers[<span class="number">2</span>]);
+
+  <span class="comment">// 検証: 合計と内訳が一致するか</span>
+  <span class="keyword">if</span> (Math.<span class="function">abs</span>(total - (good + bad)) <= <span class="number">1</span>) {
+    <span class="comment">// 一致 → 正しい値</span>
+  } <span class="keyword">else</span> {
+    <span class="comment">// 不一致 → 最初の数値は評価ではない可能性</span>
+    <span class="comment">// → 他のパターンを試す</span>
+  }
+}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 問題パターン3 -->
+    <div class="section">
+      <div class="section-header analysis">🔍 問題パターン3: 取得できないケース</div>
+      <div class="section-body">
+
+        <div class="problem-pattern">
+          <div class="problem-pattern-header">
+            <div class="icon">⏳</div>
+            <div>
+              <h3>原因: DOM構造の動的変化 / ロードタイミング</h3>
+              <span class="badge medium">発生頻度: 低〜中</span>
+            </div>
+          </div>
+          <div class="problem-pattern-body">
+
+            <h4>メルカリはSPA（Single Page Application）</h4>
+            <div class="alert warning">
+              <strong>SPAの特徴:</strong>
+              <ul style="margin-top: 10px;">
+                <li>ページ遷移時にHTMLをすべて再読み込みしない</li>
+                <li>JavaScriptで動的にDOMを構築</li>
+                <li>評価情報が表示されるまでに時間がかかることがある</li>
+              </ul>
+            </div>
+
+            <h4>解決策: MutationObserverによる監視</h4>
+            <div class="code-example">
+<span class="comment">// 評価要素が挿入されるまで待機</span>
+<span class="keyword">function</span> <span class="function">waitForSellerLink</span>(timeout = <span class="number">5000</span>) {
+  <span class="keyword">return new</span> <span class="function">Promise</span>((resolve, reject) => {
+    <span class="comment">// 既に存在する場合は即座に返す</span>
+    <span class="keyword">const</span> existing = document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>);
+    <span class="keyword">if</span> (existing) {
+      <span class="function">resolve</span>(existing);
+      <span class="keyword">return</span>;
+    }
+
+    <span class="comment">// MutationObserverで監視</span>
+    <span class="keyword">const</span> observer = <span class="keyword">new</span> <span class="function">MutationObserver</span>((mutations) => {
+      <span class="keyword">const</span> sellerLink = document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>);
+      <span class="keyword">if</span> (sellerLink) {
+        observer.<span class="function">disconnect</span>();
+        <span class="function">resolve</span>(sellerLink);
+      }
+    });
+
+    observer.<span class="function">observe</span>(document.body, { childList: <span class="keyword">true</span>, subtree: <span class="keyword">true</span> });
+
+    <span class="comment">// タイムアウト</span>
+    <span class="function">setTimeout</span>(() => {
+      observer.<span class="function">disconnect</span>();
+      <span class="function">reject</span>(<span class="keyword">new</span> <span class="function">Error</span>(<span class="string">'seller-link not found'</span>));
+    }, timeout);
+  });
+}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- みちゃった君 vs とりこみ君 比較 -->
+    <div class="section">
+      <div class="section-header compare">📋 評価取得ロジック比較</div>
+      <div class="section-body">
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>みちゃった君 v3.1.1</th>
+              <th>とりこみ君 v1.2.2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>通常メルカリ 方法1</strong></td>
+              <td class="good">data-testid="seller-link" から取得<br>（最も信頼性が高い）</td>
+              <td class="bad">#furima-assist-seller-ratings<br>（フリマアシスト依存）</td>
+            </tr>
+            <tr>
+              <td><strong>通常メルカリ 方法2</strong></td>
+              <td class="good">#furima-assist-seller-ratings<br>（バックアップ）</td>
+              <td class="bad">[class*="Rating"] span<br>（セレクタが不安定）</td>
+            </tr>
+            <tr>
+              <td><strong>メルカリショップ</strong></td>
+              <td class="good">data-testid="shops-information"<br>から数値抽出</td>
+              <td class="bad">テキストマッチング<br>（「優良ショップ」「メルカリShops」前の数字）</td>
+            </tr>
+            <tr>
+              <td><strong>数値検証</strong></td>
+              <td class="good">合計 = 良い + 悪い を検証</td>
+              <td class="bad">検証なし（最初の数値を採用）</td>
+            </tr>
+            <tr>
+              <td><strong>フォールバック</strong></td>
+              <td class="good">3段階のフォールバック</td>
+              <td>3段階だが順序が不適切</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 評価取得フロー -->
+    <div class="section">
+      <div class="section-header solution">🔄 推奨: 評価取得フロー</div>
+      <div class="section-body">
+
+        <div class="flowchart">
+          <div class="flow-step">ページ種別判定<br>通常メルカリ or ショップ</div>
+          <div class="flow-arrow">↓</div>
+
+          <div class="flow-branch">
+            <div>
+              <div class="flow-branch-label">通常メルカリ</div>
+              <div class="flow-step success">data-testid="seller-link"<br>から数値抽出</div>
+            </div>
+            <div>
+              <div class="flow-branch-label">ショップ</div>
+              <div class="flow-step success">data-testid="shops-information"<br>から数値抽出</div>
+            </div>
+          </div>
+
+          <div class="flow-arrow">↓ 失敗時</div>
+          <div class="flow-step fallback">#furima-assist-seller-ratings<br>（フリマアシスト連携）</div>
+
+          <div class="flow-arrow">↓ 失敗時</div>
+          <div class="flow-step fallback">テキスト検索<br>「良い」「悪い」パターン</div>
+
+          <div class="flow-arrow">↓ 失敗時</div>
+          <div class="flow-step fail">評価取得失敗<br>（空文字を返す）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 改善チェックリスト -->
+    <div class="section">
+      <div class="section-header solution">✅ 改善チェックリスト</div>
+      <div class="section-body">
+        <ul class="checklist">
+          <li class="done">みちゃった君: data-testid="seller-link" からの取得を実装</li>
+          <li class="done">みちゃった君: data-testid="shops-information" からの取得を実装</li>
+          <li class="done">みちゃった君: 数値検証ロジック（合計=良い+悪い）を実装</li>
+          <li>とりこみ君: data-testid="seller-link" からの取得を追加</li>
+          <li>とりこみ君: data-testid="shops-information" からの取得を追加</li>
+          <li>とりこみ君: 数値検証ロジックを追加</li>
+          <li>とりこみ君: MutationObserverによる待機を追加</li>
+          <li>両拡張機能: 取得失敗時のログ出力を強化</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- デバッグ方法 -->
+    <div class="section">
+      <div class="section-header debug">🐛 デバッグ方法</div>
+      <div class="section-body">
+
+        <h4>1. コンソールで評価要素を確認</h4>
+        <div class="code-example">
+<span class="comment">// 通常メルカリ</span>
+document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>)?.innerText
+
+<span class="comment">// メルカリショップ</span>
+document.<span class="function">querySelector</span>(<span class="string">'[data-testid="shops-information"]'</span>)?.innerText
+
+<span class="comment">// フリマアシスト</span>
+document.<span class="function">querySelector</span>(<span class="string">'#furima-assist-seller-ratings'</span>)?.innerText
+        </div>
+
+        <h4>2. 数値抽出のテスト</h4>
+        <div class="code-example">
+<span class="keyword">const</span> text = document.<span class="function">querySelector</span>(<span class="string">'[data-testid="seller-link"]'</span>)?.innerText;
+<span class="keyword">const</span> numbers = text?.<span class="function">match</span>(/\d+/g);
+console.<span class="function">log</span>(<span class="string">'抽出された数値:'</span>, numbers);
+<span class="comment">// 期待値: ["873", "871", "2"] のような配列</span>
+        </div>
+
+        <h4>3. 拡張機能のログを確認</h4>
+        <div class="alert info">
+          <strong>確認手順:</strong>
+          <ol style="margin-top: 10px;">
+            <li>Chrome DevTools を開く（F12）</li>
+            <li>Console タブを選択</li>
+            <li>「getSellerRating」でフィルタリング</li>
+            <li>評価取得のログが表示される</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
