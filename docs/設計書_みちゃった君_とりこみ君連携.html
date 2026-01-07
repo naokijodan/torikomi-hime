@@ -767,6 +767,71 @@
       </div>
     </div>
 
+    <!-- 今後の実装予定（TODO） -->
+    <div class="card">
+      <div class="card-header" style="background: #9B59B6;">📝 今後の実装予定（TODO）</div>
+      <div class="card-body">
+        <p style="margin-bottom: 20px; color: #666;">将来的に追加を検討している機能一覧</p>
+
+        <div style="background: #F3E5F5; border-radius: 12px; padding: 25px; margin-bottom: 20px;">
+          <h4 style="color: #7B1FA2; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5em;">📷</span>
+            画像枚数によるフィルタリング機能
+          </h4>
+          <p style="margin-bottom: 15px;">商品ページの画像枚数が少ない場合に、自動的にスキップまたはアラートを表示する機能。</p>
+
+          <table class="compare-table" style="margin: 0;">
+            <tr>
+              <td style="width: 120px;"><strong>ユースケース</strong></td>
+              <td>画像が2枚以下の商品は信頼性が低いため、エクスポートせずにスキップしたい</td>
+            </tr>
+            <tr>
+              <td><strong>実装案1</strong></td>
+              <td>オプション画面に「最低画像枚数」設定を追加。指定枚数未満の商品は自動スキップ</td>
+            </tr>
+            <tr>
+              <td><strong>実装案2</strong></td>
+              <td>みちゃった君のアラート機能に追加。チェック時に「画像2枚のみ」と警告表示</td>
+            </tr>
+            <tr>
+              <td><strong>技術的難易度</strong></td>
+              <td><span class="badge low">低</span> 画像枚数はすでに取得済み（imageUrls.length）</td>
+            </tr>
+            <tr>
+              <td><strong>想定工数</strong></td>
+              <td>30分〜1時間程度</td>
+            </tr>
+          </table>
+
+          <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; font-family: monospace; font-size: 0.9em;">
+            <span style="color: #6A9955;">// 実装イメージ</span><br>
+            <span style="color: #569CD6;">if</span> (settings.minImageCount > <span style="color: #B5CEA8;">0</span> && imageUrls.length < settings.minImageCount) {<br>
+            &nbsp;&nbsp;<span style="color: #6A9955;">// スキップまたはアラート表示</span><br>
+            &nbsp;&nbsp;alerts.push({ type: <span style="color: #CE9178;">'images'</span>, message: <span style="color: #CE9178;">`画像${imageUrls.length}枚のみ`</span> });<br>
+            }
+          </div>
+        </div>
+
+        <div style="background: #E3F2FD; border-radius: 12px; padding: 25px; margin-bottom: 20px;">
+          <h4 style="color: #1565C0; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5em;">🏷️</span>
+            カテゴリ・ブランドによるフィルタリング
+          </h4>
+          <p>特定のカテゴリやブランドの商品のみをエクスポート対象にする機能。</p>
+          <p style="margin-top: 10px;"><span class="badge medium">優先度: 未定</span></p>
+        </div>
+
+        <div style="background: #E8F5E9; border-radius: 12px; padding: 25px;">
+          <h4 style="color: #2E7D32; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5em;">💰</span>
+            価格帯によるフィルタリング
+          </h4>
+          <p>指定した価格範囲外の商品を自動的にスキップする機能。</p>
+          <p style="margin-top: 10px;"><span class="badge medium">優先度: 未定</span></p>
+        </div>
+      </div>
+    </div>
+
     <!-- 技術詳細 -->
     <div class="card">
       <div class="card-header workflow">🔧 技術詳細</div>
