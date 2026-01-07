@@ -1,7 +1,75 @@
-// Universal Product Scraper - Content Script
+// とりこみ姫は見た - Content Script
 // eBay、楽天、Amazon、メルカリ、ヤフオク、ラクマに対応
+// 閲覧済み判定 + 商品情報スクレイピング + フィルタリング
 
-console.log('🌐 Universal Product Scraper content.js が読み込まれました');
+console.log('👁️ とりこみ姫は見た content.js が読み込まれました');
+
+// ========================================
+// 閲覧済み管理機能（みちゃった君から移植）
+// ========================================
+const VIEWED_ITEMS_KEY = 'torikomi_viewed_items';
+const MAX_VIEWED_ITEMS = 100000;
+
+// 商品IDをURLから抽出
+function extractItemId(url) {
+  // メルカリ通常: /item/m12345678901
+  const mercariMatch = url.match(/\/item\/([a-zA-Z0-9]+)/);
+  if (mercariMatch && !url.includes('rakuten.co.jp')) return mercariMatch[1];
+
+  // メルカリショップ: /shops/product/xxxxx
+  const shopMatch = url.match(/\/shops\/product\/([a-zA-Z0-9]+)/);
+  if (shopMatch) return 'shop_' + shopMatch[1];
+
+  // ヤフオク: /auction/xxxxx
+  const yahooMatch = url.match(/\/auction\/([a-zA-Z0-9]+)/);
+  if (yahooMatch) return 'yahoo_' + yahooMatch[1];
+
+  // ラクマ: /item/xxxxx
+  const rakumaMatch = url.match(/fril\.jp\/item\/([a-zA-Z0-9]+)/);
+  if (rakumaMatch) return 'rakuma_' + rakumaMatch[1];
+
+  // PayPayフリマ
+  const paypayMatch = url.match(/paypayfleamarket.*\/item\/([a-zA-Z0-9]+)/);
+  if (paypayMatch) return 'paypay_' + paypayMatch[1];
+
+  return null;
+}
+
+// 閲覧済みリストを取得
+async function getViewedItems() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([VIEWED_ITEMS_KEY], (result) => {
+      resolve(result[VIEWED_ITEMS_KEY] || {});
+    });
+  });
+}
+
+// 閲覧済みとして保存
+async function markAsViewed(itemId, data = {}) {
+  const viewed = await getViewedItems();
+  viewed[itemId] = {
+    timestamp: Date.now(),
+    ...data
+  };
+
+  // 古いアイテムを削除（MAX_VIEWED_ITEMS を超えた場合）
+  const keys = Object.keys(viewed);
+  if (keys.length > MAX_VIEWED_ITEMS) {
+    const sorted = keys.sort((a, b) => viewed[a].timestamp - viewed[b].timestamp);
+    const toDelete = sorted.slice(0, keys.length - MAX_VIEWED_ITEMS);
+    toDelete.forEach(k => delete viewed[k]);
+  }
+
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [VIEWED_ITEMS_KEY]: viewed }, resolve);
+  });
+}
+
+// 閲覧済みかチェック
+async function isViewed(itemId) {
+  const viewed = await getViewedItems();
+  return !!viewed[itemId];
+}
 
 // ========================================
 // 共通ノイズフィルタ関数（全プラットフォーム共通）
@@ -1354,7 +1422,40 @@ function isNoiseText(text) {
 
   Object.assign(exportButton.style, exportButtonStyles);
 
+  // 閲覧済みステータスバッジを作成
+  const statusBadge = document.createElement('div');
+  statusBadge.id = 'torikomi-status-badge';
+  statusBadge.style.cssText = `
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 4px;
+  `;
+
+  // 閲覧済みチェックを実行
+  const currentItemId = extractItemId(window.location.href);
+  if (currentItemId) {
+    isViewed(currentItemId).then(viewed => {
+      if (viewed) {
+        statusBadge.textContent = '👁️ 閲覧済み';
+        statusBadge.style.backgroundColor = '#e8f5e9';
+        statusBadge.style.color = '#2e7d32';
+        statusBadge.style.border = '1px solid #a5d6a7';
+      } else {
+        statusBadge.textContent = '🆕 新規';
+        statusBadge.style.backgroundColor = '#fff3e0';
+        statusBadge.style.color = '#e65100';
+        statusBadge.style.border = '1px solid #ffcc80';
+        // 新規として閲覧済みにマーク
+        markAsViewed(currentItemId, { url: window.location.href });
+      }
+    });
+  }
+
   // コンテナにボタンを追加
+  buttonContainer.appendChild(statusBadge);
   buttonContainer.appendChild(topRow);
   buttonContainer.appendChild(exportButton);
 
@@ -5133,7 +5234,40 @@ function isNoiseText(text) {
           console.log('[getSellerRating] ショップ情報セクションが見つかりませんでした');
         }
 
-        // 方法1: #furima-assist-seller-ratings から取得（元の拡張機能が挿入する要素）
+        // 方法1: data-testid="seller-link" から取得（みちゃった君方式 - 最優先）
+        // 形式: "出品者名\n\n732\n 730  2\n本人確認済"
+        // 732=合計, 730=良い, 2=悪い
+        const sellerLink = document.querySelector('[data-testid="seller-link"]');
+        if (sellerLink) {
+          const sellerText = sellerLink.innerText || '';
+          const allNumbers = sellerText.match(/\d+/g);
+          console.log('[getSellerRating] seller-link検出:', sellerText.substring(0, 100));
+          console.log('[getSellerRating] seller-link数値一覧:', allNumbers);
+
+          if (allNumbers && allNumbers.length >= 1) {
+            // 最初の数値が合計評価数
+            const total = parseInt(allNumbers[0], 10);
+
+            // 良い評価と悪い評価を取得（2番目と3番目の数値）
+            if (allNumbers.length >= 3) {
+              good = parseInt(allNumbers[1], 10);
+              bad = parseInt(allNumbers[2], 10);
+
+              // 検証: 合計 = 良い + 悪い であるか確認
+              if (good + bad === total || Math.abs((good + bad) - total) <= 1) {
+                console.log('[getSellerRating] seller-link方式成功:', { total, good, bad });
+                const badRateVal = total > 0 ? (bad * 100 / total).toFixed(2) + '%' : '';
+                return { reviewCount: String(total), badRate: badRateVal };
+              }
+            }
+
+            // 合計だけでも返す
+            console.log('[getSellerRating] seller-link合計のみ:', total);
+            return { reviewCount: String(total), badRate: '' };
+          }
+        }
+
+        // 方法2: #furima-assist-seller-ratings から取得（フリマアシスト経由）
         const assistRatings = document.querySelector("#furima-assist-seller-ratings");
         if (assistRatings) {
           const spans = assistRatings.querySelectorAll("span");
@@ -5150,7 +5284,7 @@ function isNoiseText(text) {
           }
         }
 
-        // 方法2: Rating関連のspan要素から取得
+        // 方法3: Rating関連のspan要素から取得
         if (good === null || bad === null) {
           const sellerSection = document.querySelector('[data-testid="seller-info"]') ||
                                 document.querySelector('[class*="Seller"]');
